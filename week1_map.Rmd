@@ -1,6 +1,6 @@
 ---
 title: "Just a random map"
-author: "Daniël Hubbeling"
+author: "Daniel Hubbeling"
 date: "28 May 2018"
 output: html_document
 ---
