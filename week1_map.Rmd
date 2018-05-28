@@ -1,0 +1,37 @@
+---
+title: "Just a random map"
+author: "Daniël Hubbeling"
+date: "28 May 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(leaflet)
+library(readxl)
+```
+
+## The assignment
+
+Create a web page using R Markdown that features a map created with Leaflet.
+
+Host your webpage on either GitHub Pages, RPubs, or NeoCities.
+
+Your webpage must contain the date that you created the document, and it must contain a map created with Leaflet. We would love to see you show off your creativity!
+
+## The map
+
+```{r}
+#Load some data
+AAS_coordinates <- read_excel("AAS_coordinates.xlsx")
+head(AAS_coordinates)
+
+#Plot the map
+AAS_coordinates %>% 
+  leaflet() %>%
+  addTiles() %>%
+  addMarkers(clusterOptions = markerClusterOptions(),popup = ~as.character(name), label = ~as.character(name))
+
+```
+
+
