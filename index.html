@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Developing Data Products</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Developing Data Products">
+  <meta name="author" content="Daniel Hubbeling">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Developing Data Products</h1>
+    <h2>Week 4 Course Project</h2>
+    <p>Daniel Hubbeling<br/></p>
+  </hgroup>
+    <a href="https://github.com/primusdd/DDP-Week4/zipball/gh-pages" class="example">
+     Download
+    </a>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Introduction</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>For the asignment I build an application that allows the user to filter cars based on MPG and the transmission. Selecting the filters in slider and checkboxes results in creating a subset of the mtcars dataset in R which is then shown in the UI. A sample of the dataset:</p>
+
+<pre><code class="r">head(mtcars)
+</code></pre>
+
+<pre><code>##                    mpg cyl disp  hp drat    wt  qsec vs am gear carb
+## Mazda RX4         21.0   6  160 110 3.90 2.620 16.46  0  1    4    4
+## Mazda RX4 Wag     21.0   6  160 110 3.90 2.875 17.02  0  1    4    4
+## Datsun 710        22.8   4  108  93 3.85 2.320 18.61  1  1    4    1
+## Hornet 4 Drive    21.4   6  258 110 3.08 3.215 19.44  1  0    3    1
+## Hornet Sportabout 18.7   8  360 175 3.15 3.440 17.02  0  0    3    2
+## Valiant           18.1   6  225 105 2.76 3.460 20.22  1  0    3    1
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>The UI Code</h2>
+  </hgroup>
+  <article data-timings="">
+    <style type="text/css">
+code.r{ /* Code block */
+    font-size: 12px;
+}
+</style>
+
+<pre><code class="r">library(shiny)
+library(plotly)
+
+# Define UI for application that draws a histogram
+shinyUI(fluidPage(
+
+  # Application title
+  titlePanel(&quot;Choosing a car based on MPG&quot;),
+
+  # Sidebar with a slider input for mpg, mpg values are shown as negatives to fit filtering on higher mileage
+  sidebarLayout(
+    sidebarPanel(
+        p(&quot;This tool can be used to select a car from the mtcars data based on the mileage (or miles per gallon). You can select both the mpg you would like as well as filter on the transmission.&quot;),
+        sliderInput(&quot;mpg&quot;, &quot;miles per gallon:&quot;, min = -35, max = -10, value = -10),
+       checkboxGroupInput(&quot;transmission&quot;,&quot;Transmission&quot;,c(&quot;Automatic&quot;=&quot;0&quot;,&quot;Manual&quot;=&quot;1&quot;),c(&quot;0&quot;,&quot;1&quot;)),
+       p(&quot;Created by Daniel Hubbeling for the Developing Data Products course on Coursera on 3 June 2018.&quot;)
+       ),
+
+    # Show the plots of the generated distribution and a table showing the cars in the selection
+    mainPanel(
+        h2(&quot;MPG vs. Weight&quot;),
+       plotlyOutput(&quot;wtPlot&quot;),
+       h2(&quot;MPG vs. Speed&quot;),
+       plotlyOutput(&quot;qsecPlot&quot;),
+       h2(&quot;Cars in selection&quot;),
+       dataTableOutput(&quot;carlist&quot;)
+    )
+  )
+))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>The server side code</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">library(shiny)
+library(plotly)
+library(dplyr)
+
+# get the data to start with and add a label for transmission for easier reading
+cardata&lt;-mutate(mtcars, car.name = row.names(mtcars))
+cardata$cyl&lt;-as.factor(cardata$cyl)
+
+# Define server logic required to draw a histogram
+shinyServer(function(input, output) {
+
+    #filter and sort the data to show
+    cardata2&lt;-reactive({
+        cardata %&gt;% filter(mpg &gt;= -input$mpg) %&gt;%  filter(am %in% input$transmission) %&gt;% arrange(mpg)
+    })
+
+    # Make the output for the mpg vs weight plot
+    output$wtPlot &lt;- renderPlotly({
+        inputdata&lt;-cardata2()
+        # plot the picture
+        plot_ly(inputdata,x = ~wt, y = ~mpg,mode=&quot;markers&quot; , color = ~hp, type=&quot;scatter&quot;,text=~car.name,title=&quot;MPG vs. Speed&quot;) 
+
+    })
+
+    # Make the output for the mpg vs speed plot
+    output$qsecPlot &lt;- renderPlotly({
+        inputdata&lt;-cardata2()
+        # plot the picture
+        plot_ly(inputdata,x = ~qsec, y = ~mpg,mode=&quot;markers&quot; , color = ~hp, type=&quot;scatter&quot;,text=~car.name) 
+
+    })
+
+    # show a list of selected cars
+    output$carlist&lt;-renderDataTable({    
+        inputdata&lt;-cardata2()
+        inputdata
+    }) 
+
+})
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-4" style="background:;">
+  <hgroup>
+    <h2>Some links</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Link to the application: <a href="https://primusdd.shinyapps.io/DDP-Week4/">https://primusdd.shinyapps.io/DDP-Week4/</a></p>
+
+<p>Link to the GitHub repo: <a href="https://github.com/primusdd/DDP-Week4">https://github.com/primusdd/DDP-Week4</a></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Introduction'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='The UI Code'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='The server side code'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Some links'>
+         4
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
